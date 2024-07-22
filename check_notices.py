@@ -47,8 +47,8 @@ def fetch_notices():
         'input': json.dumps({"0": {"pageNos": 1}})
     }
     data = fetch_data(NOTICES_API_URL, params)
-    if data and data[0]['result']['data']:
-        notices = data[0]['result']['data']['notices']
+    if data and data[1]['result']['data']:
+        notices = data[1]['result']['data']['notices']
         logging.info(f"Fetched {len(notices)} notices")
         return notices
     logging.warning("No notices found in the response")
