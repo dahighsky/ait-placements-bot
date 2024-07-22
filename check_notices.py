@@ -12,7 +12,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 # Placement Portal API details
 BASE_URL = 'https://www.aitplacements.in/api/trpc'
-NOTICES_API_URL = f'{BASE_URL}/notice.publishedNoticeList'
+NOTICES_API_URL = f'{BASE_URL}/notice.publishedNoticeList,user.getUserProfileDetails?batch=1&input=%7B%220%22%3A%7B%22pageNos%22%3A1%7D%7D'
 NOTICE_DETAILS_API_URL = f'{BASE_URL}/notice.noticeDetail'
 COOKIE_VALUE = os.environ.get('COOKIE_VALUE')
 
@@ -44,11 +44,7 @@ async def fetch_data(url, params):
                 return None
 
 async def fetch_notices():
-    params = {
-        'batch': '1',
-        'input': json.dumps({"0": {"pageNos": 1}})
-    }
-    data = await fetch_data(NOTICES_API_URL, params)
+    data = await fetch_data(NOTICES_API_URL, {})
     print(data)
     if data and data[0]['result']['data']:
         notices = data[0]['result']['data']['notices']
@@ -59,10 +55,8 @@ async def fetch_notices():
 
 async def fetch_notice_details(notice_id):
     params = {
-        'batch': '1',
-        'input': json.dumps({"0": {"id": notice_id}})
     }
-    data = await fetch_data(NOTICE_DETAILS_API_URL, params)
+    data = await fetch_data("/notice.noticeDetail?batch=1&input=%7B%220%22%3A%7B%22id%22%3A%223d{notice_id}%22%7D%7D", params)
     if data and data[0]['result']['data']:
         logging.info(f"Fetched details for notice ID: {notice_id}")
         return data[0]['result']['data']
