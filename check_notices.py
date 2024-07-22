@@ -28,7 +28,7 @@ bot = Bot(token=TELEGRAM_TOKEN)
 # File to store the last processed notice ID
 LAST_NOTICE_FILE = 'last_notice_id.txt'
 
-async def fetch_data(url):
+def fetch_data(url):
     cookies = {"__Secure-next-auth.session-token": COOKIE_VALUE}
     headers = {
         'Content-Type': 'application/json',
@@ -37,14 +37,14 @@ async def fetch_data(url):
         
     response = requests.request("GET", url, headers=headers, cookies=cookies)
     if response:
-        return await response.json()
+        return response.json()
     else:
-        logging.error(f"Error fetching data: {response.status}")
-        logging.error(f"Response content: {await response.text()}")
+        logging.error(f"Error fetching data: {response}")
+        logging.error(f"Response content: {response}")
         return None
 
 async def fetch_notices():
-    data = await fetch_data(NOTICES_API_URL)
+    data = fetch_data(NOTICES_API_URL)
     print(data)
     if data and data[0]['result']['data']:
         notices = data[0]['result']['data']['notices']
@@ -54,7 +54,7 @@ async def fetch_notices():
     return []
 
 async def fetch_notice_details(notice_id):
-    data = await fetch_data(f"https://www.aitplacements.in/api/trpc/notice.noticeDetail?batch=1&input=%7B%220%22%3A%7B%22id%22%3A%22{notice_id}%22%7D%7D")
+    data = fetch_data(f"https://www.aitplacements.in/api/trpc/notice.noticeDetail?batch=1&input=%7B%220%22%3A%7B%22id%22%3A%22{notice_id}%22%7D%7D")
     if data and data[0]['result']['data']:
         logging.info(f"Fetched details for notice ID: {notice_id}")
         return data[0]['result']['data']
