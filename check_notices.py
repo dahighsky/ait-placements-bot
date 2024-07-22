@@ -8,6 +8,7 @@ import aiohttp
 from telegram import Bot
 import re
 from html import escape
+import check_notices_2
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
