@@ -9,17 +9,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
+
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
         python-version: '3.8'
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
+
+    - name: Cache last notice ID
+      uses: actions/cache@v2
+      with:
+        path: ./last_notice_id.txt
+        key: ${{ runner.os }}-last-notice-id
+
     - name: Run notice check script
       env:
         COOKIE_VALUE: ${{ secrets.COOKIE_VALUE }}
         TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
         GROUP_CHAT_ID: ${{ secrets.GROUP_CHAT_ID }}
       run: python check_notices.py
+
+    - name: Upload logs
+      uses: actions/upload-artifact@v2
+      with:
+        name: script-logs
+        path: ${{ github.workspace }}/*.log

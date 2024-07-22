@@ -1,9 +1,12 @@
 import requests
 import telegram
-from datetime import datetime
-import html
-import os
 import json
+import os
+import logging
+from datetime import datetime
+
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Placement Portal API details
 BASE_URL = 'https://www.aitplacements.in/api/trpc'
@@ -17,6 +20,9 @@ GROUP_CHAT_ID = os.environ.get('GROUP_CHAT_ID')
 
 bot = telegram.Bot(token=TELEGRAM_TOKEN)
 
+# File to store the last processed notice ID
+LAST_NOTICE_FILE = 'last_notice_id.txt'
+
 def fetch_data(url, params):
     cookies = {'__Host-next-auth.csrf-token': COOKIE_VALUE}
     headers = {
@@ -24,12 +30,15 @@ def fetch_data(url, params):
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     }
     
+    logging.info(f"Fetching data from: {url}")
+    
     response = requests.get(url, headers=headers, cookies=cookies, params=params)
     
     if response.status_code == 200:
         return response.json()
     else:
-        print(f"Error fetching data: {response.status_code}")
+        logging.error(f"Error fetching data: {response.status_code}")
+        logging.error(f"Response content: {response.text}")
         return None
 
 def fetch_notices():
@@ -39,7 +48,10 @@ def fetch_notices():
     }
     data = fetch_data(NOTICES_API_URL, params)
     if data and data[0]['result']['data']:
-        return data[0]['result']['data']['notices']
+        notices = data[0]['result']['data']['notices']
+        logging.info(f"Fetched {len(notices)} notices")
+        return notices
+    logging.warning("No notices found in the response")
     return []
 
 def fetch_notice_details(notice_id):
@@ -49,39 +61,61 @@ def fetch_notice_details(notice_id):
     }
     data = fetch_data(NOTICE_DETAILS_API_URL, params)
     if data and data[0]['result']['data']:
+        logging.info(f"Fetched details for notice ID: {notice_id}")
         return data[0]['result']['data']
+    logging.warning(f"No details found for notice ID: {notice_id}")
     return None
 
-def is_new_notice(notice, last_check_time):
-    notice_time = datetime.strptime(notice['updatedAt'], "%a %b %d %Y")
-    return notice_time > last_check_time
-
 def send_telegram_message(message):
-    bot.send_message(chat_id=GROUP_CHAT_ID, text=message, parse_mode='HTML')
+    try:
+        bot.send_message(chat_id=GROUP_CHAT_ID, text=message, parse_mode='HTML')
+        logging.info("Message sent successfully")
+    except Exception as e:
+        logging.error(f"Error sending message: {str(e)}")
+
+def get_last_processed_id():
+    if os.path.exists(LAST_NOTICE_FILE):
+        with open(LAST_NOTICE_FILE, 'r') as f:
+            return f.read().strip()
+    return None
+
+def save_last_processed_id(notice_id):
+    with open(LAST_NOTICE_FILE, 'w') as f:
+        f.write(notice_id)
 
 def check_notices():
-    last_check_time = datetime.now()
+    last_processed_id = get_last_processed_id()
+    logging.info(f"Last processed notice ID: {last_processed_id}")
+    
     notices = fetch_notices()
+    new_notices = []
     
     for notice in notices:
-        if is_new_notice(notice, last_check_time):
-            details = fetch_notice_details(notice['id'])
-            if details:
-                message = f"<b>New Notice:</b>\n"
-                message += f"<b>Title:</b> {details['title']}\n"
-                message += f"<b>Posted by:</b> {details['admin']}\n"
-                message += f"<b>Date:</b> {notice['updatedAt']}\n\n"
-                message += f"<b>Details:</b>\n{html.escape(details['body'])}"
-                
-                if len(message) > 4096:
-                    message = message[:4093] + "..."
-                
-                
-                print(message)
-                send_telegram_message(message)
+        if notice['id'] == last_processed_id:
+            break
+        new_notices.append(notice)
     
-    print("Notices checked successfully")
-    print(f"Last checked time: {last_check_time}")
+    new_notices.reverse()  # Process oldest to newest
+    
+    for notice in new_notices:
+        details = fetch_notice_details(notice['id'])
+        if details:
+            message = f"<b>New Notice:</b>\n"
+            message += f"<b>Title:</b> {details['title']}\n"
+            message += f"<b>Posted by:</b> {details['admin']}\n"
+            message += f"<b>Date:</b> {notice['updatedAt']}\n\n"
+            message += f"<b>Details:</b>\n{details['body']}"
+            
+            if len(message) > 4096:
+                message = message[:4093] + "..."
+            
+            send_telegram_message(message)
+    
+    if new_notices:
+        save_last_processed_id(new_notices[-1]['id'])
+        logging.info(f"Processed {len(new_notices)} new notices")
+    else:
+        logging.info("No new notices found")
 
 if __name__ == "__main__":
     check_notices()
