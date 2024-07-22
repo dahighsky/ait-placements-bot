@@ -7,7 +7,6 @@ COOKIE_VALUE = os.environ.get('COOKIE_VALUE')
 payload={}
 headers = {'Cookie': COOKIE_VALUE}
 
-print(str(headers))
 
 response = requests.request("GET", url, headers=headers, data=payload)
 

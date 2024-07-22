@@ -34,17 +34,14 @@ async def fetch_data(url):
         'Content-Type': 'application/json',
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     }
-
-    print(cookies)
         
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url, headers=headers, cookies=cookies) as response:
-            if response.status == 200:
-                return await response.json()
-            else:
-                logging.error(f"Error fetching data: {response.status}")
-                logging.error(f"Response content: {await response.text()}")
-                return None
+    response = requests.request("GET", url, headers=headers, cookies=cookies)
+    if response.status == 200:
+        return await response.json()
+    else:
+        logging.error(f"Error fetching data: {response.status}")
+        logging.error(f"Response content: {await response.text()}")
+        return None
 
 async def fetch_notices():
     data = await fetch_data(NOTICES_API_URL)
