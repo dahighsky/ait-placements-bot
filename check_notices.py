@@ -32,7 +32,7 @@ async def fetch_data(url, params):
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     }
     
-    logging.info(f"Fetching data from: {url}")
+    logging.info(f"Fetching data from: {url}{params} \n {cookies}")
     
     async with aiohttp.ClientSession() as session:
         async with session.get(url, headers=headers, cookies=cookies, params=params) as response:
