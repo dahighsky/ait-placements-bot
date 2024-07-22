@@ -49,7 +49,7 @@ def fetch_notices():
     data = fetch_data(NOTICES_API_URL, params)
     print(data)
     if data and data[0]['result']['data']:
-        notices = data[1]['result']['data']['notices']
+        notices = data[0]['result']['data']['notices']
         logging.info(f"Fetched {len(notices)} notices")
         return notices
     logging.warning("No notices found in the response")
