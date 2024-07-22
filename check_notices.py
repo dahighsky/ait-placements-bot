@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 # Placement Portal API details
 BASE_URL = 'https://www.aitplacements.in/api/trpc'
-NOTICES_API_URL = f'{BASE_URL}/notice.publishedNoticeList,user.getUserProfileDetails?batch=1&input=%7B%220%22%3A%7B%22pageNos%22%3A1%7D%7D'
+NOTICES_API_URL = 'https://www.aitplacements.in/api/trpc/notice.publishedNoticeList,user.getUserProfileDetails?batch=1&input=%7B%220%22%3A%7B%22pageNos%22%3A1%7D%7D'
 NOTICE_DETAILS_API_URL = f'{BASE_URL}/notice.noticeDetail'
 COOKIE_VALUE = os.environ.get('COOKIE_VALUE')
 
