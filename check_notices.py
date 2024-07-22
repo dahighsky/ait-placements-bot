@@ -8,12 +8,9 @@ import aiohttp
 from telegram import Bot
 import re
 from html import escape
-import check_notices_2
 
-# Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Placement Portal API details
 BASE_URL = 'https://www.aitplacements.in/api/trpc'
 NOTICES_API_URL = 'https://www.aitplacements.in/api/trpc/notice.publishedNoticeList,user.getUserProfileDetails?batch=1&input=%7B%220%22%3A%7B%22pageNos%22%3A1%7D%7D'
 NOTICE_DETAILS_API_URL = f'{BASE_URL}/notice.noticeDetail'
@@ -29,7 +26,6 @@ bot = Bot(token=TELEGRAM_TOKEN)
 LAST_NOTICE_FILE = 'last_notice_id.txt'
 
 def fetch_data(url):
-    cookies = {"__Secure-next-auth.session-token": COOKIE_VALUE}
     headers = {
         'Cookie': COOKIE_VALUE,
         'Content-Type': 'application/json',
@@ -171,25 +167,7 @@ async def check_notices():
     else:
         logging.info("No new notices found")
 
-# async def test_telegram_connection():
-#     try:
-#         sent_message = await bot.send_message(chat_id=GROUP_CHAT_ID, text="Test message from placement bot")
-#         logging.info(f"Test message sent successfully. Message ID: {sent_message.message_id}")
-#     except Exception as e:
-#         logging.error(f"Error sending test message: {str(e)}")
-
-# async def check_telegram_api():
-#     try:
-#         async with aiohttp.ClientSession() as session:
-#             async with session.get(f'https://api.telegram.org/bot{TELEGRAM_TOKEN}/getMe') as response:
-#                 logging.info(f"Telegram API response: {response.status}")
-#                 logging.info(f"Response content: {await response.text()}")
-#     except Exception as e:
-#         logging.error(f"Error checking Telegram API: {str(e)}")
-
 async def main():
-    # await check_telegram_api()
-    # await test_telegram_connection()
     await check_notices()
 
 if __name__ == "__main__":
