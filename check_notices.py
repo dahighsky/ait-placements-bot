@@ -36,7 +36,7 @@ async def fetch_data(url):
     }
         
     response = requests.request("GET", url, headers=headers, cookies=cookies)
-    if response.status == 200:
+    if response:
         return await response.json()
     else:
         logging.error(f"Error fetching data: {response.status}")
