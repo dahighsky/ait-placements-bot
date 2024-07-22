@@ -69,11 +69,14 @@ def fetch_notice_details(notice_id):
 
 def send_telegram_message(message):
     try:
-        print(message)
-        bot.send_message(chat_id=GROUP_CHAT_ID, text=message, parse_mode='HTML')
-        logging.info("Message sent successfully")
+        sent_message = bot.send_message(chat_id=GROUP_CHAT_ID, text=message, parse_mode='HTML')
+        logging.info(f"Message sent successfully. Message ID: {sent_message.message_id}")
+    except telegram.error.TelegramError as e:
+        logging.error(f"Telegram error: {e.message}")
     except Exception as e:
         logging.error(f"Error sending message: {str(e)}")
+        logging.error(f"Error type: {type(e).__name__}")
+        logging.error(f"Error args: {e.args}")
 
 def get_last_processed_id():
     if os.path.exists(LAST_NOTICE_FILE):
@@ -118,5 +121,23 @@ def check_notices():
     else:
         logging.info("No new notices found")
 
+def test_telegram_connection():
+    try:
+        sent_message = bot.send_message(chat_id=GROUP_CHAT_ID, text="Test message from placement bot")
+        logging.info(f"Test message sent successfully. Message ID: {sent_message.message_id}")
+    except Exception as e:
+        logging.error(f"Error sending test message: {str(e)}")
+
+def check_telegram_api():
+    try:
+        response = requests.get(f'https://api.telegram.org/bot{TELEGRAM_TOKEN}/getMe')
+        logging.info(f"Telegram API response: {response.status_code}")
+        logging.info(f"Response content: {response.text}")
+    except Exception as e:
+        logging.error(f"Error checking Telegram API: {str(e)}")
+
 if __name__ == "__main__":
+    check_telegram_api()
+    test_telegram_connection()
     check_notices()
+
