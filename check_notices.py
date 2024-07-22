@@ -1,9 +1,10 @@
 import requests
-import telegram
 import json
 import os
 import logging
 from datetime import datetime
+import asyncio
+from telegram import Bot
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -18,12 +19,12 @@ COOKIE_VALUE = os.environ.get('COOKIE_VALUE')
 TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN')
 GROUP_CHAT_ID = os.environ.get('GROUP_CHAT_ID')
 
-bot = telegram.Bot(token=TELEGRAM_TOKEN)
+bot = Bot(token=TELEGRAM_TOKEN)
 
 # File to store the last processed notice ID
 LAST_NOTICE_FILE = 'last_notice_id.txt'
 
-def fetch_data(url, params):
+async def fetch_data(url, params):
     cookies = {'__Host-next-auth.csrf-token': COOKIE_VALUE}
     headers = {
         'Content-Type': 'application/json',
@@ -32,21 +33,21 @@ def fetch_data(url, params):
     
     logging.info(f"Fetching data from: {url}")
     
-    response = requests.get(url, headers=headers, cookies=cookies, params=params)
-    
-    if response.status_code == 200:
-        return response.json()
-    else:
-        logging.error(f"Error fetching data: {response.status_code}")
-        logging.error(f"Response content: {response.text}")
-        return None
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, headers=headers, cookies=cookies, params=params) as response:
+            if response.status == 200:
+                return await response.json()
+            else:
+                logging.error(f"Error fetching data: {response.status}")
+                logging.error(f"Response content: {await response.text()}")
+                return None
 
-def fetch_notices():
+async def fetch_notices():
     params = {
         'batch': '1',
         'input': json.dumps({"0": {"pageNos": 1}})
     }
-    data = fetch_data(NOTICES_API_URL, params)
+    data = await fetch_data(NOTICES_API_URL, params)
     print(data)
     if data and data[0]['result']['data']:
         notices = data[0]['result']['data']['notices']
@@ -55,24 +56,22 @@ def fetch_notices():
     logging.warning("No notices found in the response")
     return []
 
-def fetch_notice_details(notice_id):
+async def fetch_notice_details(notice_id):
     params = {
         'batch': '1',
         'input': json.dumps({"0": {"id": notice_id}})
     }
-    data = fetch_data(NOTICE_DETAILS_API_URL, params)
+    data = await fetch_data(NOTICE_DETAILS_API_URL, params)
     if data and data[0]['result']['data']:
         logging.info(f"Fetched details for notice ID: {notice_id}")
         return data[0]['result']['data']
     logging.warning(f"No details found for notice ID: {notice_id}")
     return None
 
-def send_telegram_message(message):
+async def send_telegram_message(message):
     try:
-        sent_message = bot.send_message(chat_id=GROUP_CHAT_ID, text=message, parse_mode='HTML')
+        sent_message = await bot.send_message(chat_id=GROUP_CHAT_ID, text=message, parse_mode='HTML')
         logging.info(f"Message sent successfully. Message ID: {sent_message.message_id}")
-    except telegram.error.TelegramError as e:
-        logging.error(f"Telegram error: {e.message}")
     except Exception as e:
         logging.error(f"Error sending message: {str(e)}")
         logging.error(f"Error type: {type(e).__name__}")
@@ -88,11 +87,11 @@ def save_last_processed_id(notice_id):
     with open(LAST_NOTICE_FILE, 'w') as f:
         f.write(notice_id)
 
-def check_notices():
+async def check_notices():
     last_processed_id = get_last_processed_id()
     logging.info(f"Last processed notice ID: {last_processed_id}")
     
-    notices = fetch_notices()
+    notices = await fetch_notices()
     new_notices = []
     
     for notice in notices:
@@ -103,7 +102,7 @@ def check_notices():
     new_notices.reverse()  # Process oldest to newest
     
     for notice in new_notices:
-        details = fetch_notice_details(notice['id'])
+        details = await fetch_notice_details(notice['id'])
         if details:
             message = f"<b>New Notice:</b>\n"
             message += f"<b>Title:</b> {details['title']}\n"
@@ -113,7 +112,7 @@ def check_notices():
             if len(message) > 4096:
                 message = message[:4093] + "..."
             
-            send_telegram_message(message)
+            await send_telegram_message(message)
     
     if new_notices:
         save_last_processed_id(new_notices[-1]['id'])
@@ -121,23 +120,26 @@ def check_notices():
     else:
         logging.info("No new notices found")
 
-def test_telegram_connection():
+async def test_telegram_connection():
     try:
-        sent_message = bot.send_message(chat_id=GROUP_CHAT_ID, text="Test message from placement bot")
+        sent_message = await bot.send_message(chat_id=GROUP_CHAT_ID, text="Test message from placement bot")
         logging.info(f"Test message sent successfully. Message ID: {sent_message.message_id}")
     except Exception as e:
         logging.error(f"Error sending test message: {str(e)}")
 
-def check_telegram_api():
+async def check_telegram_api():
     try:
-        response = requests.get(f'https://api.telegram.org/bot{TELEGRAM_TOKEN}/getMe')
-        logging.info(f"Telegram API response: {response.status_code}")
-        logging.info(f"Response content: {response.text}")
+        async with aiohttp.ClientSession() as session:
+            async with session.get(f'https://api.telegram.org/bot{TELEGRAM_TOKEN}/getMe') as response:
+                logging.info(f"Telegram API response: {response.status}")
+                logging.info(f"Response content: {await response.text()}")
     except Exception as e:
         logging.error(f"Error checking Telegram API: {str(e)}")
 
-if __name__ == "__main__":
-    check_telegram_api()
-    test_telegram_connection()
-    check_notices()
+async def main():
+    await check_telegram_api()
+    await test_telegram_connection()
+    await check_notices()
 
+if __name__ == "__main__":
+    asyncio.run(main())
