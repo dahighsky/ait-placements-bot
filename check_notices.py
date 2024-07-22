@@ -69,6 +69,7 @@ def fetch_notice_details(notice_id):
 
 def send_telegram_message(message):
     try:
+        print(message)
         bot.send_message(chat_id=GROUP_CHAT_ID, text=message, parse_mode='HTML')
         logging.info("Message sent successfully")
     except Exception as e:
