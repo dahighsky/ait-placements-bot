@@ -6,6 +6,8 @@ from datetime import datetime
 import asyncio
 import aiohttp
 from telegram import Bot
+import re
+from html import escape
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -25,17 +27,15 @@ bot = Bot(token=TELEGRAM_TOKEN)
 # File to store the last processed notice ID
 LAST_NOTICE_FILE = 'last_notice_id.txt'
 
-async def fetch_data(url, params):
-    cookies = {'__Secure-next-auth.csrf-token': COOKIE_VALUE}
+async def fetch_data(url):
+    cookies = {"__Secure-next-auth.session-token": COOKIE_VALUE}
     headers = {
         'Content-Type': 'application/json',
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     }
-    
-    logging.info(f"Fetching data from: {url}{params} \n {cookies}")
-    
+        
     async with aiohttp.ClientSession() as session:
-        async with session.get(url, headers=headers, cookies=cookies, params=params) as response:
+        async with session.get(url, headers=headers, cookies=cookies) as response:
             if response.status == 200:
                 return await response.json()
             else:
@@ -44,7 +44,7 @@ async def fetch_data(url, params):
                 return None
 
 async def fetch_notices():
-    data = await fetch_data(NOTICES_API_URL, {})
+    data = await fetch_data(NOTICES_API_URL)
     print(data)
     if data and data[0]['result']['data']:
         notices = data[0]['result']['data']['notices']
@@ -54,24 +54,79 @@ async def fetch_notices():
     return []
 
 async def fetch_notice_details(notice_id):
-    params = {
-    }
-    data = await fetch_data("/notice.noticeDetail?batch=1&input=%7B%220%22%3A%7B%22id%22%3A%223d{notice_id}%22%7D%7D", params)
+    data = await fetch_data(f"https://www.aitplacements.in/api/trpc/notice.noticeDetail?batch=1&input=%7B%220%22%3A%7B%22id%22%3A%22{notice_id}%22%7D%7D")
     if data and data[0]['result']['data']:
         logging.info(f"Fetched details for notice ID: {notice_id}")
         return data[0]['result']['data']
     logging.warning(f"No details found for notice ID: {notice_id}")
     return None
 
+def format_message(message):
+    # Replace &nbsp; with space
+    message = message.replace('&nbsp;', ' ')
+    
+    # Remove any existing <b> tags to avoid duplication
+    message = re.sub(r'</?b>', '', message)
+
+    # Bold the main sections
+    message = re.sub(r'(New Notice:)', r'<b>\1</b>', message)
+    message = re.sub(r'(Title:)', r'<b>\1</b>', message)
+    message = re.sub(r'(Date:)', r'<b>\1</b>', message)
+    message = re.sub(r'(Details:)', r'<b>\1</b>', message)
+
+    # Replace <p> tags with newlines
+    message = re.sub(r'<p[^>]*>', '\n', message)
+    message = re.sub(r'</p>', '\n', message)
+
+    # Replace <br> tags with newlines
+    message = re.sub(r'<br[^>]*>', '\n', message)
+
+    # Replace multiple newlines with a single newline
+    message = re.sub(r'\n+', '\n', message)
+
+    # Replace <strong> tags with <b> tags
+    message = re.sub(r'<strong>(.*?)</strong>', r'<b>\1</b>', message)
+
+    # Handle links
+    message = re.sub(r'<a[^>]*href="([^"]*)"[^>]*>(.*?)</a>', r'\2 (\1)', message)
+
+    # Remove all other HTML tags
+    message = re.sub(r'<[^>]+>', '', message)
+
+    # Escape special characters for HTML
+    message = escape(message)
+
+    # Restore allowed HTML tags
+    message = message.replace('&lt;b&gt;', '<b>')
+    message = message.replace('&lt;/b&gt;', '</b>')
+
+    return message.strip()
+
 async def send_telegram_message(message):
     try:
-        sent_message = await bot.send_message(chat_id=GROUP_CHAT_ID, text=message, parse_mode='HTML')
-        logging.info(f"Message sent successfully. Message ID: {sent_message.message_id}")
+        # Format the message
+        formatted_message = format_message(message)
+
+        # Split the message if it's too long
+        max_length = 4096
+        messages = [formatted_message[i:i+max_length] for i in range(0, len(formatted_message), max_length)]
+
+        for msg in messages:
+            sent_message = await bot.send_message(chat_id=GROUP_CHAT_ID, text=msg, parse_mode='HTML')
+            logging.info(f"Message sent successfully. Message ID: {sent_message.message_id}")
     except Exception as e:
         logging.error(f"Error sending message: {str(e)}")
         logging.error(f"Error type: {type(e).__name__}")
         logging.error(f"Error args: {e.args}")
-
+        logging.error(f"Formatted message: {formatted_message[:500]}...")  # Log the first 500 characters of the formatted message
+        
+        # Try sending without HTML parsing if there's an error
+        try:
+            sent_message = await bot.send_message(chat_id=GROUP_CHAT_ID, text=formatted_message[:4096])
+            logging.info(f"Message sent without HTML parsing. Message ID: {sent_message.message_id}")
+        except Exception as e2:
+            logging.error(f"Error sending message without HTML parsing: {str(e2)}")
+            
 def get_last_processed_id():
     if os.path.exists(LAST_NOTICE_FILE):
         with open(LAST_NOTICE_FILE, 'r') as f:
@@ -115,25 +170,25 @@ async def check_notices():
     else:
         logging.info("No new notices found")
 
-async def test_telegram_connection():
-    try:
-        sent_message = await bot.send_message(chat_id=GROUP_CHAT_ID, text="Test message from placement bot")
-        logging.info(f"Test message sent successfully. Message ID: {sent_message.message_id}")
-    except Exception as e:
-        logging.error(f"Error sending test message: {str(e)}")
+# async def test_telegram_connection():
+#     try:
+#         sent_message = await bot.send_message(chat_id=GROUP_CHAT_ID, text="Test message from placement bot")
+#         logging.info(f"Test message sent successfully. Message ID: {sent_message.message_id}")
+#     except Exception as e:
+#         logging.error(f"Error sending test message: {str(e)}")
 
-async def check_telegram_api():
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(f'https://api.telegram.org/bot{TELEGRAM_TOKEN}/getMe') as response:
-                logging.info(f"Telegram API response: {response.status}")
-                logging.info(f"Response content: {await response.text()}")
-    except Exception as e:
-        logging.error(f"Error checking Telegram API: {str(e)}")
+# async def check_telegram_api():
+#     try:
+#         async with aiohttp.ClientSession() as session:
+#             async with session.get(f'https://api.telegram.org/bot{TELEGRAM_TOKEN}/getMe') as response:
+#                 logging.info(f"Telegram API response: {response.status}")
+#                 logging.info(f"Response content: {await response.text()}")
+#     except Exception as e:
+#         logging.error(f"Error checking Telegram API: {str(e)}")
 
 async def main():
-    await check_telegram_api()
-    await test_telegram_connection()
+    # await check_telegram_api()
+    # await test_telegram_connection()
     await check_notices()
 
 if __name__ == "__main__":
