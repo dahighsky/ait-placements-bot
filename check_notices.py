@@ -76,9 +76,12 @@ def check_notices():
                 if len(message) > 4096:
                     message = message[:4093] + "..."
                 
+                
+                print(message)
                 send_telegram_message(message)
     
     print("Notices checked successfully")
+    print(f"Last checked time: {last_check_time}")
 
 if __name__ == "__main__":
     check_notices()
