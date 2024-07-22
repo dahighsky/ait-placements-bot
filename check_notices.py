@@ -31,11 +31,12 @@ LAST_NOTICE_FILE = 'last_notice_id.txt'
 def fetch_data(url):
     cookies = {"__Secure-next-auth.session-token": COOKIE_VALUE}
     headers = {
+        'Cookie': COOKIE_VALUE,
         'Content-Type': 'application/json',
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     }
         
-    response = requests.request("GET", url, headers=headers, cookies=cookies)
+    response = requests.request("GET", url, headers=headers)
     if response:
         return response.json()
     else:
