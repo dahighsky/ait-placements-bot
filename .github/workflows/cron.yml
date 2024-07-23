@@ -40,7 +40,10 @@ jobs:
         git config --global user.name 'GitHub Action'
         git config --global user.email 'action@github.com'
         git add last_notice_id.txt
-        git diff --quiet && git diff --staged --quiet || (git commit -m "Update last_notice_id.txt" && git push)
+        git diff --quiet && git diff --staged --quiet || (git commit -m "Update last_notice_id.txt")
+        git push https://${{ secrets.PAT }}@github.com/${{ github.repository }}.git
+      env:
+        PAT: ${{ secrets.PAT }}
 
     - name: Upload logs
       uses: actions/upload-artifact@v2
