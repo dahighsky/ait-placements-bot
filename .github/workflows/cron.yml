@@ -24,7 +24,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ./last_notice_id.txt
-        key: ${{ runner.os }}-last-notice-id
+        key: ${{ runner.os }}-last-notice-id-${{ hashFiles('**/last_notice_id.txt') }}
 
     - name: Run notice check script
       env:
