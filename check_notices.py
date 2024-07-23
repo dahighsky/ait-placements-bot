@@ -138,6 +138,7 @@ def save_last_processed_id(notice_id):
         print(f"File content after save: {open(LAST_NOTICE_FILE, 'r').read()}")
     except Exception as e:
         print(f"Error saving last processed id: {e}")
+        
 async def check_notices():
     last_processed_id = get_last_processed_id()
     logging.info(f"Last processed notice ID: {last_processed_id}")

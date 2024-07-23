@@ -20,11 +20,11 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Cache last notice ID
-      uses: actions/cache@v2
-      with:
-        path: ./last_notice_id.txt
-        key: ${{ runner.os }}-last-notice-id-${{ hashFiles('**/last_notice_id.txt') }}
+    # - name: Cache last notice ID
+    #   uses: actions/cache@v2
+    #   with:
+    #     path: ./last_notice_id.txt
+    #     key: ${{ runner.os }}-last-notice-id-${{ hashFiles('**/last_notice_id.txt') }}
 
     - name: Run notice check script
       env:
