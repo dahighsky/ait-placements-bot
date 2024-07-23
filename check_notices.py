@@ -131,8 +131,12 @@ def get_last_processed_id():
     return None
 
 def save_last_processed_id(notice_id):
-    with open(LAST_NOTICE_FILE, 'w') as f:
-        f.write(notice_id)
+    try:
+        with open(LAST_NOTICE_FILE, 'w') as f:
+            f.write(notice_id)
+        print(f"Successfully saved notice id: {notice_id}")
+    except Exception as e:
+        print(f"Error saving last processed id: {e}")
 
 async def check_notices():
     last_processed_id = get_last_processed_id()
