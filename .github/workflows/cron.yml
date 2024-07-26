@@ -1,7 +1,7 @@
 name: Check Notices Every 15 Minutes
 on:
   schedule:
-    - cron: '*/15 * * * *'
+    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 jobs:
